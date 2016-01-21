@@ -376,5 +376,55 @@
     <p></p>
     <canvas id="canvas" style="border: none;" width="1024" height="1024"></canvas>
     <p></p>
+<pre>
 Image download might take a few seconds..
+Relevant code:
+
+    varying vec2 vTextureCoord;
+    uniform sampler2D uSampler;
+    uniform float uA;
+    uniform float uB;
+    uniform float uF;
+
+    struct Polar {
+    float r;
+    float phi;
+    };
+
+    // cartesian coordinates must be [-1,+1]
+    Polar makePolar(vec2 cartesian) {
+        Polar p;
+        p.r = length(cartesian);
+        p.phi = atan(cartesian.t,cartesian.s); // -pi ... pi
+        return p;
+    }
+
+    vec2 makeCart(Polar p) {
+        vec2 res;
+        res.x= cos(p.phi)*p.r;
+        res.y= sin(p.phi)*p.r;
+        return res;
+    }
+
+    // Camera models taken from here:
+    // http://wiki.panotools.org/Fisheye_Projection
+    void main(void) {
+        // map from [0,1] to [-1,+1]
+        vec2 uvn= 2.0*vTextureCoord - vec2(1,1); 
+
+        Polar p= makePolar(uvn);
+        // Assuming rectilinear camera model with ru= F * tan(theta)
+        // solve for theta (angle to optical axis)
+        float theta= atan(p.r / uF);
+        // Using generic fisheye camera model with tweakable A,B values
+        // rd= A * F * sin (theta * B)
+        // drop in theta and calculate where the point ended up in fisheye space
+        p.r = uA*uF*sin(theta * uB);
+
+        vec2 res= makeCart(p);
+        // map to [0,1] range
+        res =res + vec2(0.5,0.5);
+        gl_FragColor = texture2D(uSampler, res);
+    }
+</pre>
 </body></html>
