@@ -44,20 +44,28 @@
     // http://wiki.panotools.org/Fisheye_Projection
     void main(void) {
         // map from [0,1] to [-1,+1]
-        vec2 uvn= 2.0*vTextureCoord - vec2(1,1); 
+        vec2 uvn= 2.0*vTextureCoord - vec2(1.0,1.0); 
 
         Polar p= makePolar(uvn);
-        // Assuming rectilinear camera model with ru= F * tan(theta)
+        
+        // Scale the radius here, so it maximizes the field of view given a fisheye input
+        // just going from 0..1 is not enough to get the outer rim of the fisheye image
+        //float rmax = tan( (1.0/uA) * asin(1.0/uF) );
+        p.r *= uB;
+        
+        // Assuming rectilinear camera model with ru= 1.0 * tan(theta)
         // solve for theta (angle to optical axis)
-        float theta= atan(p.r / uF);
+        float theta= atan(p.r);
+        
         // Using generic fisheye camera model with tweakable A,B values
         // rd= A * F * sin (theta * B)
         // drop in theta and calculate where the point ended up in fisheye space
-        p.r = uA*uF*sin(theta * uB);
+        p.r = uF*(theta * uA);
 
         vec2 res= makeCart(p);
-        // map to [0,1] range
-        res =res + vec2(0.5,0.5);
+        
+        // map back from [-1,1] to [0,1] range
+        res =res*0.5 + vec2(0.5,0.5);
         gl_FragColor = texture2D(uSampler, res);
     }
 
@@ -84,22 +92,22 @@
     $(document).ready(function () {
         $("#sliderF").slider({
             min: 1,
-            max: 300,
-            value: 46,
+            max: 150,
+            value: 63,
             slide: function (event, ui) {
                 $("#F").val(ui.value/100.0);
             }
         });        $("#sliderA").slider({
             min: 1,
             max: 300,
-            value: 200,
+            value: 100,
             slide: function (event, ui) {
                 $("#A").val(ui.value/100.0);
             }
         });
         $("#sliderB").slider({
             min: 1,
-            max: 300,
+            max: 1200,
             value: 50,
             slide: function (event, ui) {
                 $("#B").val(ui.value/100.0);
